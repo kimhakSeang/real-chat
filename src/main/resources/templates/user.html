@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hot News</title>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css-style/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Hot News</h1>
+    <span id="status"><i></i><span>Connecting…</span></span>
+  </header>
+
+  <main id="feed" style="margin-top:24px">
+    <p class="empty" id="empty">No events yet. New events appear here as soon as they are published.</p>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="./css-style/board.js"></script>
+</body>
+</html>

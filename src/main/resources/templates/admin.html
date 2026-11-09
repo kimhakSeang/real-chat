@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Publish Announcement</title>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css-style/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Publish Announcement</h1>
+    <span id="status"><i></i><span>Connecting…</span></span>
+  </header>
+  <nav style="margin:6px 0 22px"><a href="user.html">View user page</a></nav>
+
+  <form id="publish-form">
+    <label for="author">Author</label>
+    <input id="author" required maxlength="80" value="Admin">
+    <label for="title">Title</label>
+    <input id="title" required maxlength="120">
+    <label for="content">Content</label>
+    <textarea id="content" required></textarea>
+    <label for="image">Image (optional, JPG, PNG, GIF or WebP, up to 5 MB)</label>
+    <input id="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp">
+    <img id="preview" alt="" hidden style="max-width:100%;max-height:200px;border-radius:6px;margin-bottom:14px">
+    <button class="primary" type="submit">Publish event</button>
+    <span id="toast" role="status"></span>
+  </form>
+
+  <h2 class="section">Published events</h2>
+  <div id="feed"><p class="empty" id="empty">Nothing published yet.</p></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="./css-style/board.js"></script>
+<script>
+  $('image').addEventListener('change', () => {
+    const pv = $('preview'), file = $('image').files[0];
+    if (pv.src) URL.revokeObjectURL(pv.src);
+    if (file) { pv.src = URL.createObjectURL(file); pv.hidden = false; }
+    else { pv.removeAttribute('src'); pv.hidden = true; }
+  });
+
+  $('publish-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+      let image = null;
+      const file = $('image').files[0];
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) throw new Error('Image must be under 5 MB.');
+        const fd = new FormData();
+        fd.append('file', file);
+        log(`Uploading ${file.name} (${file.type}, ${file.size} bytes) → ${API_ORIGIN}/api/upload`);
+        const res = await fetch(API_ORIGIN + '/api/upload', { method: 'POST', body: fd });
+        log(`Upload response: ${res.status} ${res.statusText}`, res.ok ? 'ok' : 'error');
+        if (!res.ok) throw new Error('Image upload failed (' + res.status + ').');
+        image = (await res.json()).url;          // e.g. "/uploads/3f2a....jpg"
+        log(`Server stored image as ${image}`, 'ok');
+      }
+      const sent = publishEvent({
+        author:  $('author').value.trim(),
+        tittle:  $('title').value.trim(),
+        content: $('content').value.trim(),
+        imageUrl: image                          // timestamp is set on the server
+      });
+      $('toast').textContent = sent ? 'Published.' : 'Not connected – shown locally only.';
+      $('publish-form').reset();
+      $('image').dispatchEvent(new Event('change'));
+    } catch (err) {
+      $('toast').textContent = err.message;
+      log(`Publish failed: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      setTimeout(() => ($('toast').textContent = ''), 4000);
+    }
+  });
+</script>
+</body>
+</html>
