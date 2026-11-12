@@ -3,7 +3,7 @@
 const WS_URL       = 'ws://localhost:8080/connection';  // registry.addEndpoint("/chat")
 const TOPIC_EVENTS = '/event/messages';           // @SendTo("/topic/messages")
 const APP_PUBLISH  = '/admin-app/send-message';         // "/app" + @MessageMapping("/send-message")
-const DEBUG_DEFAULT = true;                       // true = log on, false = log off
+const DEBUG_DEFAULT = false;                       // true = log on, false = log off
 // ---------------------------------------------------------------------------
 
 // HTTP origin of your Spring app (used for image upload and for /uploads/... images)
@@ -133,22 +133,43 @@ function setStatus(on, text) {
   $('status').lastElementChild.textContent = text;
 }
 
+// Extension points used by chat.js
+const connectHooks = [], disconnectHooks = [];
+let retryTimer = null;
+
 function connect() {
-  log(`Connecting to ${WS_URL} …`);
-  stomp = Stomp.client(WS_URL);
-  stomp.debug = null;
-  stomp.connect({}, () => {
+  clearTimeout(retryTimer);
+  // window.CHAT_NAME (set by chat.js) identifies this user to the server: ws://…/chat?name=alice
+  const url = WS_URL + (window.CHAT_NAME ? '?name=' + encodeURIComponent(window.CHAT_NAME) : '');
+  log(`Connecting to ${url} …`);
+  const client = Stomp.client(url);
+  stomp = client;
+  client.debug = null;
+  client.connect({}, () => {
     setStatus(true, 'Live');
     log(`Connected. Subscribed to ${TOPIC_EVENTS}`, 'ok');
-    stomp.subscribe(TOPIC_EVENTS, (frame) => {
+    client.subscribe(TOPIC_EVENTS, (frame) => {
       try { renderEvent(JSON.parse(frame.body)); }
       catch (err) { log('Could not parse message: ' + frame.body, 'error'); }
     });
-  }, () => {
+    connectHooks.forEach((fn) => { try { fn(client); } catch (e) { log('Hook error: ' + e.message, 'error'); } });
+  }, (err) => {
+    if (stomp !== client) return;            // an old connection we already replaced
+    log('STOMP error/closed: ' + (err && err.headers ? err.headers.message : (err && err.reason) || err), 'error');
     setStatus(false, 'Offline – retrying…');
+    disconnectHooks.forEach((fn) => fn());
     log('WebSocket disconnected. Retrying in 3 s…', 'error');
-    setTimeout(connect, 3000);
+    retryTimer = setTimeout(connect, 3000);
   });
+}
+
+// Reconnect now (e.g. after the chat name changed)
+function reconnect() {
+  clearTimeout(retryTimer);
+  const old = stomp;
+  setStatus(false, 'Connecting…');
+  disconnectHooks.forEach((fn) => fn());
+  if (old && old.connected) old.disconnect(connect); else connect();
 }
 
 // Returns true if sent to the server; false if offline (demo: shown locally)
@@ -164,4 +185,6 @@ function publishEvent(payload) {
 }
 
 initDebugPanel();
-connect();
+// Wait for DOMContentLoaded so chat.js (loaded after this file) can set CHAT_NAME first
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', connect);
+else connect();

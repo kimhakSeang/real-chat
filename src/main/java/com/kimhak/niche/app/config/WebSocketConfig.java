@@ -14,13 +14,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // Endpoint for clients to connect
         registry.addEndpoint("/connection")
                 .setAllowedOriginPatterns("*")
+                .setHandshakeHandler(new NameHandshakeHandler());   // NEW
 //                .withSockJS() // Enable SockJS fallback
                 ;
     }
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         // Prefix for topics (server-to-client)
-        registry.enableSimpleBroker("/topic", "/event");
+        registry.enableSimpleBroker("/topic", "/event", "/user");
         // Prefix for client-to-server messages
         registry.setApplicationDestinationPrefixes("/user-app", "/admin-app");
     }
