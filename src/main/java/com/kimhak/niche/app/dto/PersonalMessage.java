@@ -11,5 +11,6 @@ public class PersonalMessage {
     private String from;
     private String to;
     private String text;
+    private String clientMessageId;
     private LocalDateTime timestamp;
 }

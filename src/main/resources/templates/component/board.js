@@ -16,6 +16,12 @@ const DEBUG = (() => {
   return v === null ? DEBUG_DEFAULT : !['0', 'false', 'off'].includes(v.toLowerCase());
 })();
 
+// Log every STOMP frame sent/received (SEND, MESSAGE, ERROR …). Turn off with ?trace=off
+const STOMP_TRACE = (() => {
+  const v = new URLSearchParams(location.search).get('trace');
+  return v === null ? true : !['0', 'false', 'off'].includes(v.toLowerCase());
+})();
+
 const $ = (id) => document.getElementById(id);
 let stomp = null, connected = false;
 
@@ -144,7 +150,14 @@ function connect() {
   log(`Connecting to ${url} …`);
   const client = Stomp.client(url);
   stomp = client;
-  client.debug = null;
+  client.debug = (STOMP_TRACE && DEBUG)
+    ? (str) => { if (!/PING|PONG/.test(str)) log('STOMP ' + String(str).slice(0, 400)); }
+    : null;
+  if (client.ws) {
+    client.ws.addEventListener('open',  () => log('WebSocket open'));
+    client.ws.addEventListener('close', (ev) => log(`WebSocket closed: code=${ev.code} reason="${ev.reason}" clean=${ev.wasClean}`, 'error'));
+    client.ws.addEventListener('error', () => log('WebSocket error event', 'error'));
+  }
   client.connect({}, () => {
     setStatus(true, 'Live');
     log(`Connected. Subscribed to ${TOPIC_EVENTS}`, 'ok');

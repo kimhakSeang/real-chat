@@ -44,15 +44,16 @@
   .chat-people{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 10px}
   .chat-empty{color:var(--muted);padding:8px 2px}
   .chat-person{flex:0 0 auto;width:64px;background:none;border:0;padding:0;color:var(--ink);font:inherit;font-size:.78rem;text-align:center;cursor:pointer}
+  .chat-person.active .nm{font-weight:600}
   .chat-person .nm{display:block;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .chat-person:hover .chat-avatar{outline:2px solid var(--accent);outline-offset:2px}
+  .chat-person.active .chat-avatar,.chat-person:hover .chat-avatar{outline:2px solid var(--accent);outline-offset:2px}
   .chat-avatar{position:relative;width:52px;height:52px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:1rem;flex:none}
   .chat-avatar.sm{width:34px;height:34px;font-size:.8rem;margin:0}
   .chat-avatar .dot{position:absolute;right:0;bottom:0;width:14px;height:14px;border-radius:50%;background:var(--live);border:2px solid var(--bg)}
   .chat-badge{background:#c0392b;color:#fff;border-radius:999px;padding:0 7px;font-size:.75rem;line-height:1.4}
   .chat-avatar .chat-badge{position:absolute;top:-4px;right:-4px}
 
-  .chat-window{position:fixed;right:16px;bottom:16px;z-index:50;width:min(340px,calc(100vw - 32px));height:min(440px,calc(100vh - 32px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;font-size:.92rem}
+  .chat-window{width:100%;height:380px;max-height:70vh;margin:4px 0 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;flex-direction:column;overflow:hidden;font-size:.92rem}
   .chat-window[hidden]{display:none}
   .chat-window form{background:none;border:0;border-radius:0;padding:8px}
   .chat-top{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line)}
@@ -77,14 +78,14 @@
   const feed = document.getElementById('feed');
   feed.parentNode.insertBefore(strip, feed);
 
-  // Chat window (bottom right), opened by clicking an avatar
+  // Chat area: shown right below the avatar row when an avatar is clicked
   const win = el('section', 'chat-window');
   win.hidden = true;
   win.innerHTML = `
     <div class="chat-top"><span class="who"></span><b class="peer"></b><button class="chat-link close" aria-label="Close chat">✕</button></div>
     <div class="chat-msgs" role="log" aria-live="polite"></div>
     <form class="chat-row"><input class="msginput" maxlength="1000" autocomplete="off" aria-label="Message"><button class="primary">Send</button></form>`;
-  document.body.append(win);
+  strip.append(win);
 
   const q = (root, s) => root.querySelector(s);
   const peopleEl = q(strip, '.chat-people'), searchEl = q(strip, '.search');
@@ -105,7 +106,7 @@
       return;
     }
     shown.forEach((n) => {
-      const b = el('button', 'chat-person');
+      const b = el('button', 'chat-person' + (n === current ? ' active' : ''));
       b.title = n;
       b.setAttribute('aria-label', 'Chat with ' + n + (unread[n] ? `, ${unread[n]} unread` : ''));
       const a = avatar(n);
@@ -137,11 +138,12 @@
   function openThread(n) {
     current = n; unread[n] = 0;
     renderPeople(); renderThread(); input.focus();
+    win.scrollIntoView({ block: 'nearest' });
   }
 
   /* ---------- Events ---------- */
   searchEl.addEventListener('input', renderPeople);               // filter friends as you type
-  q(win, '.close').onclick = () => { current = null; renderThread(); };
+  q(win, '.close').onclick = () => { current = null; renderThread(); renderPeople(); };
 
   q(win, 'form').addEventListener('submit', (e) => {
     e.preventDefault();
