@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Join · Event Board</title>
+    <link rel="icon" type="image/png" href="component/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="component/style.css">
+    <style>
+        .login { max-width: 380px; margin: 10vh auto 0; text-align: center; padding: 28px 26px 26px; }
+        .login img { width: 96px; height: 96px; }
+        .login h1 { margin: 8px 0 4px; }
+        .login .lead { margin: 0 0 22px; color: var(--muted); }
+        .login label { text-align: left; }
+        .login button { width: 100%; }
+        .login .error { min-height: 1.3em; margin: -6px 0 10px; color: var(--off); font-size: .85rem; text-align: left; }
+        .login .or { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--muted); font-size: .85rem; }
+        .login .or::before, .login .or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+        button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 6px;
+                           font: inherit; font-weight: 600; padding: 10px 20px; cursor: pointer; }
+        button.secondary:hover { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <form class="login" id="login-form" novalidate>
+        <img src="component/logo.png" alt="Logo" width="96" height="96">
+        <h1>Welcome</h1>
+        <p class="lead">Enter your name to see announcements and chat with others.</p>
+
+        <label for="name">Your name</label>
+        <input id="name" maxlength="40" autocomplete="nickname" autofocus placeholder="e.g. alice">
+        <div class="error" id="error" role="alert"></div>
+        <button class="primary" type="submit">Continue</button>
+
+        <div class="or">or</div>
+        <button class="secondary" type="button" id="guest">Join as guest</button>
+    </form>
+</div>
+
+<script>
+    const VALID = /^[A-Za-z0-9_-]{1,20}$/;          // same rule as the server (NameHandshakeHandler)
+    const input = document.getElementById('name'), error = document.getElementById('error');
+
+    try {                                            // pre-fill with the name used last time in this tab
+      const prev = sessionStorage.getItem('chatName');
+      if (prev && VALID.test(prev)) input.value = prev;
+    } catch (e) {}
+
+    function enter(name) {
+      try { sessionStorage.setItem('chatName', name); }
+      catch (e) { location.href = 'user.html?name=' + encodeURIComponent(name); return; }   // storage blocked
+      location.href = 'user.html';
+    }
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = input.value.trim().replace(/\s+/g, '_');      // "John Smith" → "John_Smith"
+      if (!VALID.test(name)) {
+        error.textContent = 'Use letters, numbers, "_" or "-" (1 to 20 characters).';
+        input.focus();
+        return;
+      }
+      enter(name);
+    });
+    input.addEventListener('input', () => { error.textContent = ''; });
+
+    document.getElementById('guest').addEventListener('click', () => {
+      enter('guest-' + (1000 + Math.floor(Math.random() * 9000)));
+    });
+</script>
+</body>
+</html>

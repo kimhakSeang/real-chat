@@ -14,8 +14,12 @@
   const CHAT_USERS = '/topic/chat.users';        // template.convertAndSend("/topic/chat.users", names)
   // ---------------------------------------------------------------------------------------
   let me = new URLSearchParams(location.search).get('name'), nameSource = 'URL ?name=';   // user.html?name=alice
-  if (!VALID.test(me || '')) { nameSource = 'sessionStorage (kept for this tab)'; me = null; try { me = sessionStorage.getItem('chatName'); } catch (e) {} }
-  if (!VALID.test(me || '')) { nameSource = 'new random guest name'; me = 'guest-' + (1000 + Math.floor(Math.random() * 9000)); }
+  if (!VALID.test(me || '')) { nameSource = 'login page (sessionStorage)'; me = null; try { me = sessionStorage.getItem('chatName'); } catch (e) {} }
+  if (!VALID.test(me || '')) {                  // no name yet → send the visitor to the login page
+    window.CHAT_REDIRECTING = true;             // stops board.js from connecting
+    location.replace('login.html');
+    return;
+  }
   try { sessionStorage.setItem('chatName', me); } catch (e) {}
   window.CHAT_NAME = me;                       // board.js sends it as ?name= when connecting
 
@@ -47,6 +51,7 @@
   .chat-strip-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px}
   .chat-strip-head .myname{color:var(--muted)}
   .chat-strip-head .myname::before{content:'· '}
+  .chat-switch{font-size:.8rem;color:var(--accent)}
   .chat-strip-head input{margin:0 0 0 auto;width:200px;max-width:100%;padding:6px 10px}
   .chat-people{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 10px}
   .chat-empty{color:var(--muted);padding:8px 2px}
@@ -93,7 +98,7 @@
   const strip = el('section', 'chat-strip');
   strip.setAttribute('aria-label', 'Active users');
   strip.innerHTML = `
-    <div class="chat-strip-head"><b>Active now</b>
+    <div class="chat-strip-head"><b>Active now</b><a class="chat-switch" href="login.html">Log out</a>
       <input type="search" class="search" placeholder="Search friend name…" autocomplete="off" aria-label="Search friend name"></div>
     <div class="chat-people"></div>`;
   const feed = document.getElementById('feed');
@@ -123,7 +128,7 @@
     log(`Chat: friend list → online=${JSON.stringify(online)}, others=${others.length}, shown=${shown.length}${term ? `, search="${term}"` : ''}`);
     if (!shown.length) {
       peopleEl.append(el('div', 'chat-empty', !others.length
-        ? 'No one else is online. Open this page in another tab to try it (each tab gets its own name).'
+        ? 'No one else is online.'
         : `No friends match “${term}”.`));
       return;
     }

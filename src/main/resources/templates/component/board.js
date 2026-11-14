@@ -196,6 +196,7 @@ const connectHooks = [], disconnectHooks = [];
 let retryTimer = null;
 
 function connect() {
+  if (window.CHAT_REDIRECTING) return;        // chat.js is sending the visitor to login.html
   clearTimeout(retryTimer);
   // window.CHAT_NAME (set by chat.js) identifies this user to the server: ws://…/chat?name=alice
   const url = WS_URL + (window.CHAT_NAME ? '?name=' + encodeURIComponent(window.CHAT_NAME) : '');
