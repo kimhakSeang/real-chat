@@ -6,6 +6,13 @@
     return;
   }
   const VALID = /^[A-Za-z0-9_-]{1,20}$/;
+
+  // ---- Chat destinations: must match your WebSocketConfig and DirectChatController ----
+  const CHAT_SEND  = '/user-app/chat.private';   // application prefix + @MessageMapping("/chat.private")
+  const CHAT_WHO   = '/user-app/chat.who';       // application prefix + @MessageMapping("/chat.who")
+  const CHAT_INBOX = '/user/queue/private';      // convertAndSendToUser(name, "/queue/private", msg)
+  const CHAT_USERS = '/topic/chat.users';        // template.convertAndSend("/topic/chat.users", names)
+  // ---------------------------------------------------------------------------------------
   let me = new URLSearchParams(location.search).get('name'), nameSource = 'URL ?name=';   // user.html?name=alice
   if (!VALID.test(me || '')) { nameSource = 'sessionStorage (kept for this tab)'; me = null; try { me = sessionStorage.getItem('chatName'); } catch (e) {} }
   if (!VALID.test(me || '')) { nameSource = 'new random guest name'; me = 'guest-' + (1000 + Math.floor(Math.random() * 9000)); }
@@ -59,10 +66,24 @@
   .chat-top{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line)}
   .chat-top b{flex:1}
   .chat-link{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;padding:2px 6px}
-  .chat-msgs{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
-  .chat-msg{max-width:80%;padding:7px 10px;border-radius:10px;background:var(--bg);align-self:flex-start;white-space:pre-wrap;word-break:break-word}
-  .chat-msg.mine{align-self:flex-end;background:var(--accent);color:var(--accent-ink)}
-  .chat-msg small{display:block;opacity:.7;font-size:.72rem}
+  .chat-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column}
+  .chat-time{align-self:center;color:var(--muted);font-size:.72rem;margin:10px 0 4px}
+  .chat-line{display:flex;align-items:flex-end;gap:6px;margin-top:2px}
+  .chat-line.first{margin-top:8px}
+  .chat-line.mine{justify-content:flex-end}
+  .chat-slot{width:28px;flex:none}
+  .chat-slot .chat-avatar.sm{width:28px;height:28px;font-size:.7rem}
+  .chat-msg{max-width:75%;padding:7px 12px;border-radius:18px;background:var(--bg);white-space:pre-wrap;word-break:break-word;line-height:1.35}
+  .chat-line.mine .chat-msg{background:var(--accent);color:var(--accent-ink)}
+  .chat-line.theirs:not(.first) .chat-msg{border-top-left-radius:5px}
+  .chat-line.theirs:not(.last) .chat-msg{border-bottom-left-radius:5px}
+  .chat-line.mine:not(.first) .chat-msg{border-top-right-radius:5px}
+  .chat-line.mine:not(.last) .chat-msg{border-bottom-right-radius:5px}
+  .chat-line.pending .chat-msg{opacity:.6}
+  .chat-status{align-self:flex-end;font-size:.7rem;color:var(--muted);margin:2px 4px 0}
+  .chat-status.err{color:#c0392b}
+  .chat-hello{margin:auto;text-align:center;color:var(--muted)}
+  .chat-hello .chat-avatar{width:64px;height:64px;font-size:1.3rem;margin-bottom:8px}
   .chat-row{display:flex;gap:6px;border-top:1px solid var(--line)}
   .chat-row input{margin:0;flex:1}
   .chat-row button{font:inherit;cursor:pointer}`;
@@ -72,7 +93,7 @@
   const strip = el('section', 'chat-strip');
   strip.setAttribute('aria-label', 'Active users');
   strip.innerHTML = `
-    <div class="chat-strip-head"><b>Active now</b><span class="myname"></span>
+    <div class="chat-strip-head"><b>Active now</b>
       <input type="search" class="search" placeholder="Search friend name…" autocomplete="off" aria-label="Search friend name"></div>
     <div class="chat-people"></div>`;
   const feed = document.getElementById('feed');
@@ -90,7 +111,8 @@
   const q = (root, s) => root.querySelector(s);
   const peopleEl = q(strip, '.chat-people'), searchEl = q(strip, '.search');
   const whoEl = q(win, '.who'), peerEl = q(win, '.peer'), msgsEl = q(win, '.chat-msgs'), input = q(win, '.msginput');
-  q(strip, '.myname').textContent = me;
+  const nameEl = document.getElementById('user-name');            // header shows the logo + my user name
+  if (nameEl) nameEl.textContent = me;
 
   /* ---------- Rendering ---------- */
   function renderPeople() {
@@ -124,15 +146,44 @@
     peerEl.textContent = current;
     whoEl.replaceChildren(avatar(current, true));
     msgsEl.replaceChildren();
-    (threads[current] || []).forEach((m) => {
-      const d = el('div', 'chat-msg' + (m.from === me ? ' mine' : ''), m.text);
-      d.append(el('small', '', parseTimestamp(m.timestamp).toLocaleTimeString()));
-      msgsEl.append(d);
+    const list = threads[current] || [];
+    if (!list.length) {
+      const hello = el('div', 'chat-hello');
+      hello.append(avatar(current), el('div', '', `Say hi to ${current} 👋`));
+      msgsEl.append(hello);
+    }
+    const GAP = 15 * 60 * 1000;                                   // show a time label after 15 min of silence
+    const when = (d) => d.toLocaleString([], d.toDateString() === new Date().toDateString()
+      ? { hour: 'numeric', minute: '2-digit' } : { dateStyle: 'medium', timeStyle: 'short' });
+    let lastMine = -1;
+    list.forEach((m, i) => { if (m.from === me) lastMine = i; });
+    list.forEach((m, i) => {
+      const prev = list[i - 1], next = list[i + 1];
+      const t = parseTimestamp(m.timestamp);
+      const newBlock = !prev || t - parseTimestamp(prev.timestamp) > GAP;
+      if (newBlock) msgsEl.append(el('div', 'chat-time', when(t)));
+      const mine = m.from === me;
+      const first = newBlock || prev.from !== m.from;
+      const last = !next || next.from !== m.from || parseTimestamp(next.timestamp) - t > GAP;
+      const line = el('div', `chat-line ${mine ? 'mine' : 'theirs'}${first ? ' first' : ''}${last ? ' last' : ''}${m.pending ? ' pending' : ''}`);
+      if (!mine) {                                                // their avatar beside the last bubble of a group
+        const slot = el('span', 'chat-slot');
+        if (last) slot.append(avatar(m.from, true));
+        line.append(slot);
+      }
+      const bubble = el('div', 'chat-msg', m.text);
+      bubble.title = t.toLocaleString();
+      line.append(bubble);
+      msgsEl.append(line);
+      if (i === lastMine) {
+        msgsEl.append(el('div', 'chat-status' + (m.failed ? ' err' : ''),
+          m.failed ? 'Not delivered' : m.pending ? 'Sending…' : 'Sent'));
+      }
     });
     msgsEl.scrollTop = msgsEl.scrollHeight;
     const ok = connected && online.includes(current);
-    input.disabled = !ok;
-    input.placeholder = ok ? 'Type a message…' : current + ' is offline';
+    if (input.disabled === ok) input.disabled = !ok;
+    input.placeholder = ok ? 'Aa' : current + ' is offline';
   }
 
   function openThread(n) {
@@ -145,28 +196,104 @@
   searchEl.addEventListener('input', renderPeople);               // filter friends as you type
   q(win, '.close').onclick = () => { current = null; renderThread(); renderPeople(); };
 
+  // One-line snapshot of the connection state, used in log messages
+  const snapshot = () => `connected=${connected} stomp.connected=${stomp && stomp.connected} ` +
+    `ws.readyState=${stomp && stomp.ws ? stomp.ws.readyState : 'n/a'} (1=OPEN) me="${me}" online=${JSON.stringify(online)}`;
+  let sendSeq = 0;
+  const receipts = {};
+
   q(win, 'form').addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text || !current || !connected || !online.includes(current)) return;
-    stomp.send('/user-app/chat.private', {}, JSON.stringify({ to: current, text }));  // server fills in "from"
+    if (!text) return;
+    if (!current) { log('Chat: send ignored – no conversation is open', 'error'); return; }
+    if (!connected || !stomp || !stomp.connected) { log('Chat: send BLOCKED – not connected. ' + snapshot(), 'error'); return; }
+    if (!online.includes(current)) { log(`Chat: send BLOCKED – "${current}" is not in the online list. ` + snapshot(), 'error'); return; }
+
+    const peer = current, id = 'msg-' + (++sendSeq);
+    const msg = { id, from: me, to: peer, text, timestamp: new Date().toISOString(), pending: true };
+    (threads[peer] = threads[peer] || []).push(msg);              // appears right away, like Messenger
+    const payload = JSON.stringify({ to: peer, text });           // server fills in "from"
+    log(`Chat: [${id}] SEND → ${CHAT_SEND} payload=${payload}`);
+    log(`Chat: [${id}] state: ${snapshot()}`);
+    receipts[id] = Date.now();
+    try { stomp.send(CHAT_SEND, { receipt: id }, payload); }
+    catch (err) {                                                 // e.g. the socket closed a moment ago
+      msg.pending = false; msg.failed = true;
+      log(`Chat: [${id}] stomp.send THREW: ${err.message}`, 'error');
+    }
     input.value = '';
+    renderThread();
+    input.focus();
+    if (msg.failed) return;
+    setTimeout(() => {
+      if (!msg.pending) return;
+      msg.pending = false; msg.failed = true;
+      log(`Chat: [${id}] NO echo on ${CHAT_INBOX} after 6 s → "Not delivered". ${snapshot()}. Check: ` +
+          '(1) STOMP error / WebSocket closed lines above; ' +
+          '(2) server log: did /chat.private run, and is the sender Principal null (silently ignored)? ' +
+          '(3) the "subscribed to /user/queue/private" line after connecting; ' +
+          '(4) "/queue" in enableSimpleBroker; ' +
+          '(5) the receiver name must equal ?name= exactly.', 'error');
+      if (current === peer) renderThread();
+    }, 6000);
   });
 
   function onPrivate(frame) {
-    const m = JSON.parse(frame.body);
+    log(`Chat: received on ${CHAT_INBOX} headers=${JSON.stringify(frame.headers)} body=${frame.body}`);
+    let m;
+    try { m = JSON.parse(frame.body); }
+    catch (err) { log('Chat: cannot parse private message: ' + err.message, 'error'); return; }
+    if (m.text === SELFTEST) {                                    // reply to the self-test: not a real message
+      if (selfTest) {
+        clearTimeout(selfTest.timer);
+        log(`Chat: SELF-TEST OK – round trip ${Date.now() - selfTest.t0} ms (send → server → ${CHAT_INBOX}). Sending and receiving both work.`, 'ok');
+        selfTest = null;
+      }
+      return;
+    }
+    if (!m.from || !m.to || typeof m.text !== 'string') {
+      log('Chat: private message is missing from/to/text → ignored. Check the DirectMessage fields on the server.', 'error');
+      return;
+    }
+    if (m.from !== me && m.to !== me) log(`Chat: WARNING message is neither from nor to "${me}" (from="${m.from}", to="${m.to}")`, 'error');
     const peer = m.from === me ? m.to : m.from;
-    (threads[peer] = threads[peer] || []).push(m);
-    log(`Chat ${m.from} → ${m.to} (${m.text.length} chars)`);
+    const list = (threads[peer] = threads[peer] || []);
+    const mine = m.from === me && list.find((x) => x.from === me && (x.pending || x.failed) && x.text === m.text);
+    if (mine) { mine.pending = false; mine.failed = false; }      // server confirmed my message
+    else list.push(m);
+    log(`Chat: ${m.from} → ${m.to} (${m.text.length} chars)${mine ? ` [confirmed ${mine.id}]` : ''}`, 'ok');
     if (current === peer) renderThread();
     else if (m.from !== me) { unread[peer] = (unread[peer] || 0) + 1; renderPeople(); }
   }
+
+  // ---- Self-test: send a message to myself and wait for it on my inbox ----
+  const SELFTEST = '__chat_selftest__';
+  let selfTest = null;
+  function runSelfTest() {
+    if (!DEBUG || !connected || !stomp || !stomp.connected) return;
+    if (selfTest) clearTimeout(selfTest.timer);
+    log(`Chat: SELF-TEST → sending a test message to myself ("${me}") via ${CHAT_SEND}`);
+    selfTest = {
+      t0: Date.now(),
+      timer: setTimeout(() => {
+        log(`Chat: SELF-TEST FAILED – nothing came back on ${CHAT_INBOX} within 4 s. Either the SEND never reached the controller ` +
+            `(application prefix of ${CHAT_SEND} not in setApplicationDestinationPrefixes, @MessageMapping missing, or sender Principal is null) ` +
+            `or the reply was not delivered (broker prefix of ${CHAT_INBOX} missing in enableSimpleBroker, or not subscribed). ` +
+            'Look for STOMP ERROR / WebSocket closed lines above and in the server log.', 'error');
+        selfTest = null;
+      }, 4000)
+    };
+    try { stomp.send(CHAT_SEND, {}, JSON.stringify({ to: me, text: SELFTEST })); }
+    catch (err) { log('Chat: SELF-TEST send threw: ' + err.message, 'error'); }
+  }
+  window.chatSelfTest = runSelfTest;            // run it any time from the browser console
 
   let gotUsers = false, whoTimer = null;
 
   function onUsers(f) {
     gotUsers = true;
-    log(`Chat: received /topic/chat.users → ${f.body}`);
+    log(`Chat: received ${CHAT_USERS} → ${f.body}`);
     try { online = JSON.parse(f.body); }
     catch (e) { log('Chat: could not parse the user list: ' + e.message, 'error'); return; }
     if (!Array.isArray(online)) { log('Chat: user list is not an array', 'error'); online = []; }
@@ -182,12 +309,18 @@
   }
 
   connectHooks.push((client) => {
-    log(`Chat: subscribing to /user/queue/private and /topic/chat.users as "${me}"`);
-    client.subscribe('/user/queue/private', onPrivate);          // my private messages
-    client.subscribe('/topic/chat.users', onUsers);              // who is online
+    log(`Chat: subscribing to ${CHAT_INBOX} and ${CHAT_USERS} as "${me}"`);
+    client.onreceipt = (frame) => {                              // server accepted a SEND (if it supports receipts)
+      const id = frame.headers['receipt-id'];
+      if (receipts[id]) { log(`Chat: [${id}] RECEIPT after ${Date.now() - receipts[id]} ms (server accepted the frame)`, 'ok'); delete receipts[id]; }
+    };
+    const sub = client.subscribe(CHAT_INBOX, onPrivate);   // my private messages
+    log(`Chat: subscribed to ${CHAT_INBOX} (id=${sub.id})`);
+    client.subscribe(CHAT_USERS, onUsers);              // who is online
     gotUsers = false;
-    client.send('/user-app/chat.who', {}, '');                        // ask for the current list
-    log('Chat: sent /user-app/chat.who (asking the server for the online list)');
+    client.send(CHAT_WHO, {}, '');                        // ask for the current list
+    log(`Chat: sent ${CHAT_WHO} (asking the server for the online list)`);
+    setTimeout(runSelfTest, 600);                                // then test send + receive end to end
     clearTimeout(whoTimer);
     whoTimer = setTimeout(() => {
       if (!gotUsers) log('Chat: NO reply on /topic/chat.users after 3 s. The server is not publishing the list. Check that ' +
@@ -199,5 +332,6 @@
   disconnectHooks.push(() => { log('Chat: disconnected, online list cleared'); online = []; renderPeople(); renderThread(); });
 
   log(`Chat identity: "${me}" – from ${nameSource}`);
+  log(`Chat destinations: send=${CHAT_SEND} who=${CHAT_WHO} inbox=${CHAT_INBOX} users=${CHAT_USERS}`);
   renderPeople();
 })();

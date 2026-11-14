@@ -3,7 +3,7 @@
 const WS_URL       = 'ws://localhost:8080/connection';  // registry.addEndpoint("/chat")
 const TOPIC_EVENTS = '/event/messages';           // @SendTo("/topic/messages")
 const APP_PUBLISH  = '/admin-app/send-message';         // "/app" + @MessageMapping("/send-message")
-const DEBUG_DEFAULT = false;                       // true = log on, false = log off
+const DEBUG_DEFAULT = true;                        // true = log on, false = log off  (was false: that is why you saw no logs)
 // ---------------------------------------------------------------------------
 
 // HTTP origin of your Spring app (used for image upload and for /uploads/... images)
@@ -96,10 +96,18 @@ async function diagnoseImage(url) {
 
 /* ---------- Rendering ---------- */
 function renderEvent(msg) {
-  log(`Event: title="${msg.tittle}" author="${msg.author}" imageUrl=${msg.imageUrl ? JSON.stringify(msg.imageUrl) : '(none)'}`);
+  log(`Event: title="${msg.tittle}" subTitle=${JSON.stringify(msg.subTitle || '')} author="${msg.author}" imageUrl=${msg.imageUrl ? JSON.stringify(msg.imageUrl) : '(none)'}`);
+  if (!('subTitle' in msg)) log('Event has no "subTitle" key: the server class (ChatMessage) has no subTitle field, so the server dropped it. Add "private String subTitle;" and restart.', 'error');
   $('empty')?.remove();
   const card = document.createElement('article');
   card.className = 'event fresh';
+  card.tabIndex = 0;                                   // clickable / keyboard accessible
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', 'Open details: ' + (msg.tittle || ''));
+  card.addEventListener('click', () => openDetail(msg));
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(msg); }
+  });
 
   if (msg.imageUrl && !/^(https?:\/\/|\/)/i.test(msg.imageUrl)) {
     log('Image ignored: URL must start with http://, https:// or /', 'error');
@@ -114,22 +122,66 @@ function renderEvent(msg) {
       log(`Image FAILED to load: ${safeImage}`, 'error');
       const note = document.createElement('div');
       note.className = 'meta';
-      note.style.padding = '12px 18px 0';
+      note.style.cssText = 'padding:10px;word-break:break-all;font-size:.75rem';
       note.textContent = 'Image could not be loaded: ' + safeImage;
       img.replaceWith(note);
       diagnoseImage(safeImage);
     };
     img.src = safeImage;
-    card.append(img);
+    const thumb = document.createElement('div');   // left column
+    thumb.className = 'thumb';
+    thumb.append(img);
+    card.append(thumb);
   }
   const body = document.createElement('div'); body.className = 'body';
   const h = document.createElement('h2'); h.textContent = msg.tittle || '(no title)'; // field is "tittle" in EventMessage
-  const p = document.createElement('p');  p.textContent = msg.content || '';
+  const sub = document.createElement('p'); sub.className = 'sub'; sub.textContent = msg.subTitle || '';
   const m = document.createElement('div'); m.className = 'meta';
   m.textContent = `${msg.author || 'Unknown'} · ${parseTimestamp(msg.timestamp).toLocaleString()}`;
-  body.append(h, p, m);
+  if (msg.subTitle) body.append(h, sub, m); else body.append(h, m);   // full content is in the pop-up
   card.append(body);
   $('feed').prepend(card);   // newest first
+}
+
+/* ---------- Detail pop-up (opens when an announcement is clicked) ---------- */
+let detail = null;
+function ensureDetail() {
+  if (detail) return detail;
+  const dlg = document.createElement('dialog');
+  dlg.className = 'detail';
+  dlg.setAttribute('aria-labelledby', 'detail-title');
+  dlg.innerHTML = `
+    <div class="detail-box">
+      <button type="button" class="detail-close" aria-label="Close">✕</button>
+      <div class="detail-head">
+        <img class="detail-img" alt="" hidden>
+        <div class="detail-titles"><h2 id="detail-title"></h2><p class="sub"></p><div class="meta"></div></div>
+      </div>
+      <hr>
+      <div class="detail-content"></div>
+    </div>`;
+  document.body.append(dlg);
+  const q = (s) => dlg.querySelector(s);
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });   // click on the dark backdrop
+  q('.detail-close').addEventListener('click', () => dlg.close());
+  q('.detail-img').addEventListener('error', (e) => { e.target.hidden = true; });
+  detail = { dlg, img: q('.detail-img'), title: q('h2'), sub: q('.sub'), meta: q('.meta'), content: q('.detail-content') };
+  return detail;
+}
+
+function openDetail(msg) {
+  const d = ensureDetail();
+  const src = msg.imageUrl && /^(https?:\/\/|\/)/i.test(msg.imageUrl) ? toImageUrl(msg.imageUrl) : null;
+  d.img.hidden = !src;
+  if (src) d.img.src = src; else d.img.removeAttribute('src');
+  d.title.textContent = msg.tittle || '(no title)';
+  d.sub.textContent = msg.subTitle || '';
+  d.sub.hidden = !msg.subTitle;
+  d.meta.textContent = `${msg.author || 'Unknown'} · ${parseTimestamp(msg.timestamp).toLocaleString()}`;
+  d.content.textContent = msg.content || '';
+  d.dlg.scrollTop = 0;
+  if (!d.dlg.open) d.dlg.showModal();
+  log(`Detail opened: "${msg.tittle}" (image=${src || 'none'}, content ${String(msg.content || '').length} chars)`);
 }
 
 /* ---------- WebSocket (STOMP, native WebSocket) ---------- */
@@ -147,6 +199,7 @@ function connect() {
   clearTimeout(retryTimer);
   // window.CHAT_NAME (set by chat.js) identifies this user to the server: ws://…/chat?name=alice
   const url = WS_URL + (window.CHAT_NAME ? '?name=' + encodeURIComponent(window.CHAT_NAME) : '');
+  log(`Config: WS_URL=${WS_URL} TOPIC_EVENTS=${TOPIC_EVENTS} APP_PUBLISH=${APP_PUBLISH}`);
   log(`Connecting to ${url} …`);
   const client = Stomp.client(url);
   stomp = client;
@@ -189,7 +242,7 @@ function reconnect() {
 function publishEvent(payload) {
   if (connected) {
     stomp.send(APP_PUBLISH, {}, JSON.stringify(payload));
-    log(`Sent to ${APP_PUBLISH}: imageUrl=${payload.imageUrl ? JSON.stringify(payload.imageUrl) : '(none)'}`, 'ok');
+    log(`Sent to ${APP_PUBLISH}: subTitle=${JSON.stringify(payload.subTitle || '')} imageUrl=${payload.imageUrl ? JSON.stringify(payload.imageUrl) : '(none)'}`, 'ok');
     return true;
   }
   log('Not connected – showing locally only', 'error');

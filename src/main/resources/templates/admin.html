@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Publish Announcement</title>
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="component/favicon.png">
   <link rel="stylesheet" href="component/style.css">
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Publish Announcement</h1>
+    <h1 class="brand"><img class="logo" src="component/logo.png" alt="Logo" width="44" height="44"><span>Publish Announcement</span></h1>
     <span id="status"><i></i><span>Connecting…</span></span>
   </header>
   <nav style="margin:6px 0 22px"><a href="user.html">View user page</a></nav>
@@ -20,7 +21,9 @@
     <input id="author" required maxlength="80" value="Admin">
     <label for="title">Title</label>
     <input id="title" required maxlength="120">
-    <label for="content">Content</label>
+    <label for="subtitle">Sub title</label>
+    <input id="subtitle" maxlength="160">
+    <label for="content">Content (shown in the detail pop-up)</label>
     <textarea id="content" required></textarea>
     <label for="image">Image (optional, JPG, PNG, GIF or WebP, up to 5 MB)</label>
     <input id="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp">
@@ -63,6 +66,7 @@
       const sent = publishEvent({
         author:  $('author').value.trim(),
         tittle:  $('title').value.trim(),
+        subTitle: $('subtitle').value.trim(),
         content: $('content').value.trim(),
         imageUrl: image                          // timestamp is set on the server
       });

@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class EventMessage {
     private String author;
     private String tittle;
+    private String subTitle;
     private String content;
     private String imageUrl;
     private LocalDateTime timestamp;

@@ -14,7 +14,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/connection")
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns("http://localhost:63342")
                 .setHandshakeHandler(new NameHandshakeHandler());
     }
 
