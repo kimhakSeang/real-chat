@@ -38,7 +38,8 @@ public class PresenceTracker {
         String sessionId = sessionDisconnectEvent.getSessionId();
         String removedSessionId = sessionsRegistry.remove(sessionId);
         if(!Objects.isNull(removedSessionId)){
-            publish();        }
+            publish();
+        }
     }
 
     public void publish(){

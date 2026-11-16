@@ -98,7 +98,7 @@
   const strip = el('section', 'chat-strip');
   strip.setAttribute('aria-label', 'Active users');
   strip.innerHTML = `
-    <div class="chat-strip-head"><b>Active now</b><a class="chat-switch" href="login.html">Log out</a>
+    <div class="chat-strip-head"><b>Active now</b><a class="chat-switch" href="login.html" id="chat-logout">Log out</a>
       <input type="search" class="search" placeholder="Search friend name…" autocomplete="off" aria-label="Search friend name"></div>
     <div class="chat-people"></div>`;
   const feed = document.getElementById('feed');
@@ -293,6 +293,30 @@
     catch (err) { log('Chat: SELF-TEST send threw: ' + err.message, 'error'); }
   }
   window.chatSelfTest = runSelfTest;            // run it any time from the browser console
+
+  // ---- Log out: close the WebSocket cleanly so the server removes this user right away ----
+  function logout() {
+    log(`Chat: logging out "${me}" – sending DISCONNECT`);
+    window.CHAT_REDIRECTING = true;                 // stop board.js from reconnecting
+    try { sessionStorage.removeItem('chatName'); } catch (e) {}   // forget the name: user.html now asks for a login
+    let done = false;
+    const go = () => { if (done) return; done = true; location.replace('login.html'); };
+    const client = stomp;
+    try {
+      if (client && client.connected && client.ws) {
+        client.ws.addEventListener('close', () => { log('Chat: WebSocket closed, session ended', 'ok'); go(); });
+        client.disconnect();                        // STOMP DISCONNECT frame, then closes the WebSocket
+      } else go();
+    } catch (err) { log('Chat: logout error: ' + err.message, 'error'); go(); }
+    setTimeout(go, 1500);                           // never wait longer than this
+  }
+  q(strip, '.chat-switch').addEventListener('click', (e) => { e.preventDefault(); logout(); });
+
+  // Safety net: leaving the page in ANY way (logout link, refresh, closing the tab) ends the session cleanly
+  window.addEventListener('pagehide', () => {
+    try { if (stomp && stomp.connected) stomp.disconnect(); } catch (e) {}
+  });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });   // page came back from the back/forward cache
 
   let gotUsers = false, whoTimer = null;
 

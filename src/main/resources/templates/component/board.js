@@ -3,7 +3,7 @@
 const WS_URL       = 'ws://localhost:8080/connection';  // registry.addEndpoint("/chat")
 const TOPIC_EVENTS = '/event/messages';           // @SendTo("/topic/messages")
 const APP_PUBLISH  = '/admin-app/send-message';         // "/app" + @MessageMapping("/send-message")
-const DEBUG_DEFAULT = true;                        // true = log on, false = log off  (was false: that is why you saw no logs)
+const DEBUG_DEFAULT = false;                        // true = log on, false = log off  (was false: that is why you saw no logs)
 // ---------------------------------------------------------------------------
 
 // HTTP origin of your Spring app (used for image upload and for /uploads/... images)

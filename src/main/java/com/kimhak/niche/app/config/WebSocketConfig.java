@@ -13,7 +13,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/connection")
+        registry.addEndpoint("/connection") // handshak - create websocket connection
                 .setAllowedOriginPatterns("http://localhost:63342")
                 .setHandshakeHandler(new NameHandshakeHandler());
     }
@@ -21,20 +21,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
 
-        // Server-to-client destinations
+        // Broker prefix (Centrally for pub-sub)
         registry.enableSimpleBroker(
                 "/topic",
                 "/queue",
                 "/event"
         );
 
-        // Client-to-server destinations
+        // Client-to-server (ex: browser call service to register user login)
         registry.setApplicationDestinationPrefixes(
                 "/user-app",
                 "/admin-app"
         );
 
-        // Private user destinations
+        // Server to Client (ex: server forward message from sender to receiver browser)
         registry.setUserDestinationPrefix("/user");
     }
 }
