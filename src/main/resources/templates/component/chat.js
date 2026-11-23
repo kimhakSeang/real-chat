@@ -47,7 +47,7 @@
   /* ---------- UI ---------- */
   const css = document.createElement('style');
   css.textContent = `
-  .chat-strip{margin:20px 0 6px}
+  .chat-strip{position:relative;margin:20px 0 6px}
   .chat-strip-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px}
   .chat-strip-head .myname{color:var(--muted)}
   .chat-strip-head .myname::before{content:'· '}
@@ -65,11 +65,24 @@
   .chat-badge{background:#c0392b;color:#fff;border-radius:999px;padding:0 7px;font-size:.75rem;line-height:1.4}
   .chat-avatar .chat-badge{position:absolute;top:-4px;right:-4px}
 
-  .chat-window{width:100%;height:380px;max-height:70vh;margin:4px 0 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;flex-direction:column;overflow:hidden;font-size:.92rem}
-  .chat-window[hidden]{display:none}
-  .chat-window form{background:none;border:0;border-radius:0;padding:8px}
+  .chat-card{position:absolute;left:0;right:0;top:100%;z-index:30;scroll-margin-bottom:110px;display:flex;flex-direction:column;margin:12px 0 0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.12);font-size:.92rem;animation:cardIn .18s ease-out}
+  .chat-card[hidden]{display:none}
+  .chat-card::before{content:'';position:absolute;top:-8px;left:var(--caret,40px);width:14px;height:14px;background:var(--surface);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+  @keyframes cardIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.chat-card{animation:none}}
+  .chat-card form{background:none;border:0;border-radius:0;padding:10px 12px}
+  .chat-card .chat-top{padding:12px 14px;border-radius:14px 14px 0 0;background:var(--surface)}
+  .chat-card .chat-top .chat-avatar.sm{width:38px;height:38px;font-size:.85rem}
+  .chat-card .chat-msgs{height:min(300px,42vh);flex:none}
+  .chat-card .chat-row{border-radius:0 0 14px 14px}
+  .chat-card .chat-row input{border-radius:999px;padding:10px 16px}
+  .chat-send{flex:none;width:42px;height:42px;padding:0;border:0;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .chat-send:disabled{opacity:.4;cursor:not-allowed}
+  .chat-send .ico{width:20px;height:20px}
+  .chat-top .titles{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+  .chat-top .presence{font-size:.75rem;color:var(--muted)}
+  .chat-top .presence.on{color:var(--live)}
   .chat-top{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line)}
-  .chat-top b{flex:1}
   .chat-link{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;padding:2px 6px}
   .chat-msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column}
   .chat-time{align-self:center;color:var(--muted);font-size:.72rem;margin:10px 0 4px}
@@ -98,32 +111,68 @@
   const strip = el('section', 'chat-strip');
   strip.setAttribute('aria-label', 'Active users');
   strip.innerHTML = `
-    <div class="chat-strip-head"><b>Active now</b><a class="chat-switch" href="login.html" id="chat-logout">Log out</a>
-      <input type="search" class="search" placeholder="Search friend name…" autocomplete="off" aria-label="Search friend name"></div>
+    <div class="chat-strip-head"><b>Online users</b><span class="count"></span></div>
     <div class="chat-people"></div>`;
-  const feed = document.getElementById('feed');
-  feed.parentNode.insertBefore(strip, feed);
+  const slot = document.getElementById('people-slot');            // user.html provides the place for it
+  if (slot) slot.append(strip);
+  else { const feed = document.getElementById('feed'); feed.parentNode.insertBefore(strip, feed); }
 
   // Chat area: shown right below the avatar row when an avatar is clicked
-  const win = el('section', 'chat-window');
+  const win = el('section', 'chat-card');
   win.hidden = true;
   win.innerHTML = `
-    <div class="chat-top"><span class="who"></span><b class="peer"></b><button class="chat-link close" aria-label="Close chat">✕</button></div>
+    <div class="chat-top"><span class="who"></span><span class="titles"><b class="peer"></b><small class="presence"></small></span><button class="chat-link close" aria-label="Close chat">✕</button></div>
     <div class="chat-msgs" role="log" aria-live="polite"></div>
-    <form class="chat-row"><input class="msginput" maxlength="1000" autocomplete="off" aria-label="Message"><button class="primary">Send</button></form>`;
-  strip.append(win);
+    <form class="chat-row"><input class="msginput" maxlength="1000" autocomplete="off" aria-label="Message"><button class="chat-send" type="submit" aria-label="Send"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></form>`;
+  strip.append(win);                               // the card sits right under the friends row
 
   const q = (root, s) => root.querySelector(s);
-  const peopleEl = q(strip, '.chat-people'), searchEl = q(strip, '.search');
-  const whoEl = q(win, '.who'), peerEl = q(win, '.peer'), msgsEl = q(win, '.chat-msgs'), input = q(win, '.msginput');
+  const peopleEl = q(strip, '.chat-people'), countEl = q(strip, '.count');
+  const searchEl = document.getElementById('friend-search') || { value: '', addEventListener() {} };   // search box in the page
+  const whoEl = q(win, '.who'), sendBtn = q(win, '.chat-send'), peerEl = q(win, '.peer'), presenceEl = q(win, '.presence'), msgsEl = q(win, '.chat-msgs'), input = q(win, '.msginput');
   const nameEl = document.getElementById('user-name');            // header shows the logo + my user name
   if (nameEl) nameEl.textContent = me;
+  const avatarBtn = document.getElementById('avatar-btn');         // round profile button in the header
+  if (avatarBtn) avatarBtn.replaceChildren(avatar(me));
+  const chatListEl = document.getElementById('chat-list'), navBadge = document.getElementById('nav-chat-badge');
+
+  /* ---------- "All chats" list (bottom bar → Chats) ---------- */
+  function renderChats() {
+    const total = Object.values(unread).reduce((a, b) => a + b, 0);
+    if (navBadge) { navBadge.hidden = !total; navBadge.textContent = total; }
+    if (!chatListEl) return;
+    chatListEl.replaceChildren();
+    const lastOf = (p) => threads[p][threads[p].length - 1];
+    const peers = Object.keys(threads).filter((p) => threads[p].length)
+      .sort((a, b) => parseTimestamp(lastOf(b).timestamp) - parseTimestamp(lastOf(a).timestamp));
+    if (!peers.length) {
+      chatListEl.append(el('div', 'chat-empty', 'No conversations yet. Tap someone in Online users to say hi.'));
+      return;
+    }
+    peers.forEach((p) => {
+      const last = lastOf(p);
+      const row = el('button', 'chat-item');
+      row.type = 'button';
+      const a = avatar(p);
+      if (online.includes(p)) a.append(el('span', 'dot'));
+      const mid = el('span', 'mid');
+      mid.append(el('b', '', p), el('span', 'preview', (last.from === me ? 'You: ' : '') + last.text));
+      const end = el('span', 'end');
+      end.append(el('small', '', parseTimestamp(last.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })));
+      if (unread[p]) end.append(el('span', 'chat-badge', unread[p]));
+      row.append(a, mid, end);
+      row.onclick = () => { if (window.setView) window.setView('home'); openThread(p); };   // chat opens on the home screen
+      chatListEl.append(row);
+    });
+  }
 
   /* ---------- Rendering ---------- */
   function renderPeople() {
     peopleEl.replaceChildren();
     const term = searchEl.value.trim();
     const others = online.filter((n) => n !== me);
+    countEl.textContent = others.length ? '· ' + others.length : '';
+    renderChats();
     const shown = others.filter((n) => n.toLowerCase().includes(term.toLowerCase()));
     log(`Chat: friend list → online=${JSON.stringify(online)}, others=${others.length}, shown=${shown.length}${term ? `, search="${term}"` : ''}`);
     if (!shown.length) {
@@ -146,6 +195,7 @@
   }
 
   function renderThread() {
+    renderChats();
     if (!current) { win.hidden = true; return; }
     win.hidden = false;
     peerEl.textContent = current;
@@ -187,8 +237,20 @@
     });
     msgsEl.scrollTop = msgsEl.scrollHeight;
     const ok = connected && online.includes(current);
+    presenceEl.textContent = ok ? '● Online' : 'Offline';
+    presenceEl.classList.toggle('on', ok);
     if (input.disabled === ok) input.disabled = !ok;
-    input.placeholder = ok ? 'Aa' : current + ' is offline';
+    input.placeholder = ok ? 'Type a message…' : current + ' is offline';
+    updateSend();
+    positionCaret();
+  }
+
+  function updateSend() { sendBtn.disabled = input.disabled || !input.value.trim(); }
+  function positionCaret() {                        // the small arrow on the card points at the selected friend
+    const btn = peopleEl.querySelector('.chat-person.active');
+    if (!btn || win.hidden) return;
+    const b = btn.getBoundingClientRect(), w = win.getBoundingClientRect();
+    win.style.setProperty('--caret', Math.min(Math.max(b.left + b.width / 2 - w.left, 28), w.width - 28) + 'px');
   }
 
   function openThread(n) {
@@ -200,6 +262,10 @@
   /* ---------- Events ---------- */
   searchEl.addEventListener('input', renderPeople);               // filter friends as you type
   q(win, '.close').onclick = () => { current = null; renderThread(); renderPeople(); };
+  win.addEventListener('keydown', (e) => { if (e.key === 'Escape') { current = null; renderThread(); renderPeople(); } });
+  input.addEventListener('input', updateSend);
+  peopleEl.addEventListener('scroll', positionCaret);
+  window.addEventListener('resize', positionCaret);
 
   // One-line snapshot of the connection state, used in log messages
   const snapshot = () => `connected=${connected} stomp.connected=${stomp && stomp.connected} ` +
@@ -310,7 +376,8 @@
     } catch (err) { log('Chat: logout error: ' + err.message, 'error'); go(); }
     setTimeout(go, 1500);                           // never wait longer than this
   }
-  q(strip, '.chat-switch').addEventListener('click', (e) => { e.preventDefault(); logout(); });
+  const logoutBtn = document.getElementById('chat-logout');        // in the account menu
+  if (logoutBtn) logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
 
   // Safety net: leaving the page in ANY way (logout link, refresh, closing the tab) ends the session cleanly
   window.addEventListener('pagehide', () => {

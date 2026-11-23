@@ -24,6 +24,7 @@ const STOMP_TRACE = (() => {
 
 const $ = (id) => document.getElementById(id);
 let stomp = null, connected = false;
+const eventHooks = [];                         // functions called for every announcement that arrives (used by home.js)
 
 /* ---------- On-page debug log ---------- */
 function initDebugPanel() {
@@ -95,12 +96,55 @@ async function diagnoseImage(url) {
 }
 
 /* ---------- Rendering ---------- */
+/* ---------- Saved news (bookmarks, kept in this browser) ---------- */
+const SAVED_KEY = 'savedNews';
+const loadSaved = () => { try { return JSON.parse(localStorage.getItem(SAVED_KEY)) || []; } catch (e) { return []; } };
+const newsKey = (m) => JSON.stringify([m.author, m.tittle, m.timestamp]);
+const isSaved = (m) => loadSaved().some((x) => newsKey(x) === newsKey(m));
+function toggleSaved(m) {
+  let list = loadSaved();
+  if (list.some((x) => newsKey(x) === newsKey(m))) list = list.filter((x) => newsKey(x) !== newsKey(m));
+  else list.unshift({ author: m.author, tittle: m.tittle, subTitle: m.subTitle, content: m.content, imageUrl: m.imageUrl, timestamp: m.timestamp });
+  try { localStorage.setItem(SAVED_KEY, JSON.stringify(list.slice(0, 50))); }
+  catch (e) { log('Could not save: ' + e.message, 'error'); }
+  document.dispatchEvent(new CustomEvent('news:saved-changed'));
+}
+function saveButton(msg) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'save-btn';
+  b.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
+  const sync = () => {
+    const on = isSaved(msg);
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on);
+    b.setAttribute('aria-label', on ? 'Remove from saved' : 'Save');
+    b.title = b.getAttribute('aria-label');
+  };
+  const onChange = () => {
+    if (!b.isConnected) { document.removeEventListener('news:saved-changed', onChange); return; }   // card was removed
+    sync();
+  };
+  b.addEventListener('click', (e) => { e.stopPropagation(); toggleSaved(msg); });      // don't open the pop-up
+  b.addEventListener('keydown', (e) => e.stopPropagation());
+  document.addEventListener('news:saved-changed', onChange);
+  sync();
+  return b;
+}
+
 function renderEvent(msg) {
   log(`Event: title="${msg.tittle}" subTitle=${JSON.stringify(msg.subTitle || '')} author="${msg.author}" imageUrl=${msg.imageUrl ? JSON.stringify(msg.imageUrl) : '(none)'}`);
   if (!('subTitle' in msg)) log('Event has no "subTitle" key: the server class (ChatMessage) has no subTitle field, so the server dropped it. Add "private String subTitle;" and restart.', 'error');
   $('empty')?.remove();
+  const card = buildCard(msg, true);
+  $('feed').prepend(card);   // newest first
+  eventHooks.forEach((fn) => { try { fn(msg, card); } catch (e) { log('Event hook error: ' + e.message, 'error'); } });
+}
+
+// Builds one announcement card (also used for the "Saved" list)
+function buildCard(msg, fresh) {
   const card = document.createElement('article');
-  card.className = 'event fresh';
+  card.className = 'event' + (fresh ? ' fresh' : '');
+  card.dataset.search = [msg.tittle, msg.subTitle, msg.content, msg.author].join(' ').toLowerCase();
   card.tabIndex = 0;                                   // clickable / keyboard accessible
   card.setAttribute('role', 'button');
   card.setAttribute('aria-label', 'Open details: ' + (msg.tittle || ''));
@@ -140,7 +184,8 @@ function renderEvent(msg) {
   m.textContent = `${msg.author || 'Unknown'} · ${parseTimestamp(msg.timestamp).toLocaleString()}`;
   if (msg.subTitle) body.append(h, sub, m); else body.append(h, m);   // full content is in the pop-up
   card.append(body);
-  $('feed').prepend(card);   // newest first
+  if (document.body.dataset.page === 'user') card.append(saveButton(msg));   // bookmark (user page only)
+  return card;
 }
 
 /* ---------- Detail pop-up (opens when an announcement is clicked) ---------- */
@@ -199,7 +244,9 @@ function connect() {
   if (window.CHAT_REDIRECTING) return;        // chat.js is sending the visitor to login.html
   clearTimeout(retryTimer);
   // window.CHAT_NAME (set by chat.js) identifies this user to the server: ws://…/chat?name=alice
-  const url = WS_URL + (window.CHAT_NAME ? '?name=' + encodeURIComponent(window.CHAT_NAME) : '');
+  const url = WS_URL + (window.CHAT_NAME
+    ? '?name=' + encodeURIComponent(window.CHAT_NAME) + '&cid=' + encodeURIComponent(window.CHAT_CLIENT_ID || '')
+    : '');
   log(`Config: WS_URL=${WS_URL} TOPIC_EVENTS=${TOPIC_EVENTS} APP_PUBLISH=${APP_PUBLISH}`);
   log(`Connecting to ${url} …`);
   const client = Stomp.client(url);

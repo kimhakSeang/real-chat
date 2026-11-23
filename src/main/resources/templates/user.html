@@ -4,24 +4,110 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Home Page</title>
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="component/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="component/style.css">
 </head>
-<body>
+<body data-page="user">
 <div class="wrap">
-  <header>
-    <h1 class="brand"><img class="logo" src="component/logo.png" alt="Logo" width="44" height="44"><span id="user-name">Guest</span></h1>
-    <span id="status"><i></i><span>Connecting…</span></span>
+
+  <!-- Top bar: logo, "Hi, name", live status | notifications, profile menu -->
+  <header class="topbar">
+    <div class="who">
+      <img class="logo" src="component/logo.png" alt="Logo" width="48" height="48">
+      <div>
+        <div class="hi-line">Hi, <span id="user-name">Guest</span></div>
+        <span id="status"><i></i><span>Connecting…</span></span>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="pop-wrap">
+        <button id="bell" class="icon-btn" type="button" aria-label="Notifications" aria-expanded="false">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/></svg>
+          <span class="badge" hidden></span>
+        </button>
+        <div id="bell-pop" class="pop" hidden>
+          <div class="pop-head"><b>Notifications</b><button id="bell-readall" class="chat-link" type="button">Mark all read</button></div>
+          <div id="bell-list"></div>
+        </div>
+      </div>
+      <div class="pop-wrap">
+        <button id="avatar-btn" class="avatar-btn" type="button" aria-label="Account menu" aria-expanded="false"></button>
+        <div id="account-pop" class="pop" hidden>
+          <button id="open-settings" class="pop-item" type="button"><b>Settings</b></button>
+          <button id="chat-logout" class="pop-item" type="button"><b>Log out</b></button>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <main id="feed" style="margin-top:24px">
-    <p class="empty" id="empty">No events yet. New events appear here as soon as they are published.</p>
-  </main>
+  <!-- Home -->
+  <section id="view-home">
+    <div class="search"><input id="friend-search" type="search" placeholder="Search friend…" autocomplete="off" aria-label="Search friend"></div>
+    <div id="people-slot"></div>
+
+    <div class="search news-search">
+      <input id="news-search" type="search" placeholder="Search news…" autocomplete="off" aria-label="Search news">
+      <div class="chips">
+        <button class="chip" type="button" data-tab="all" aria-pressed="true">All</button>
+        <button class="chip" type="button" data-tab="saved" aria-pressed="false">Saved</button>
+      </div>
+    </div>
+    <main id="feed"><p class="empty" id="empty">No events yet. New events appear here as soon as they are published.</p></main>
+    <div id="saved-feed" hidden></div>
+    <p class="empty" id="news-empty" hidden></p>
+  </section>
+
+  <!-- All chats -->
+  <section id="view-chats" hidden>
+    <h2 class="section">Chats</h2>
+    <div id="chat-list"></div>
+  </section>
+
+  <!-- To-do list -->
+  <section id="view-todo" hidden>
+    <h2 class="section">To-do list</h2>
+    <form id="todo-form" class="todo-form">
+      <input id="todo-input" maxlength="120" placeholder="Add a task…" autocomplete="off" aria-label="New task">
+      <button class="primary" type="submit">Add</button>
+    </form>
+    <ul id="todo-list" class="todo-list"></ul>
+    <div class="todo-foot"><span id="todo-count"></span><button id="todo-clear" class="chat-link" type="button" hidden>Clear completed</button></div>
+  </section>
 </div>
+
+<!-- Bottom bar -->
+<nav class="bottom-nav" aria-label="Main">
+  <button type="button" data-view="chats" aria-label="Show all chats">
+    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>
+    <span class="badge" id="nav-chat-badge" hidden></span><small>Chats</small>
+  </button>
+  <button type="button" data-view="home" aria-current="page" aria-label="Back to home screen">
+    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg><small>Home</small>
+  </button>
+  <button type="button" data-view="todo" aria-label="To-do list">
+    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg><small>To-do</small>
+  </button>
+</nav>
+
+<!-- Settings -->
+<dialog id="settings" class="detail">
+  <div class="detail-box">
+    <button type="button" class="detail-close" id="settings-close" aria-label="Close">✕</button>
+    <h2 style="margin:0 0 4px">Settings</h2>
+    <p class="sub" style="margin:0;color:var(--muted)">Signed in as <b id="settings-name"></b></p>
+    <fieldset class="theme">
+      <legend>Theme</legend>
+      <label><input type="radio" name="theme" value="system"> Same as device</label>
+      <label><input type="radio" name="theme" value="light"> Light</label>
+      <label><input type="radio" name="theme" value="dark"> Dark</label>
+    </fieldset>
+  </div>
+</dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 <script src="./component/board.js"></script>
 <script src="./component/chat.js"></script>
+<script src="./component/home.js"></script>
 </body>
 </html>
