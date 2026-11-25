@@ -94,7 +94,7 @@ body[data-page="user"] .search { margin-top: 12px; }
 
 body[data-page="user"] .chat-strip { margin: 14px 0 4px; }
 body[data-page="user"] .chat-strip-head { gap: 8px; margin-bottom: 14px; padding-bottom: 0; border-bottom: 2px dashed var(--line-soft); }
-body[data-page="user"] .chat-strip-head b { font: 600 1.7rem/1.15 var(--display); color: var(--ink); }
+body[data-page="user"] .chat-strip-head b { font: 600 1.4rem/1.15 var(--display); color: var(--ink); }
 body[data-page="user"] .chat-strip-head .count { display: none; }
 body[data-page="user"] .chat-people { gap: 10px; padding: 4px 14px 18px 2px; scrollbar-width: none; scroll-snap-type: x proximity; }
 body[data-page="user"] .chat-people::-webkit-scrollbar { display: none; }
