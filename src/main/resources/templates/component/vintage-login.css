@@ -1,0 +1,76 @@
+/* ==========================================================================
+   VINTAGE theme for login.html — same artwork as the user screen (component/img/*)
+   Standalone: this page does not need style.css.
+   ========================================================================== */
+:root {
+  --paper:#d2be94; --pill:#ccb68a; --cream:#f5ecd6;
+  --ink:#58492a; --muted:#7d6a47; --line:#6e5a3a; --line-soft:#987d51; --err:#8a3b26;
+  --serif:"Yanone Kaffeesatz","Pathway Gothic One","Arial Narrow",Georgia,sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: #a99466; }
+body {
+  margin: 0; color: var(--ink); background: #a99466;
+  font: 500 19px/1.3 var(--serif);
+  -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
+}
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+/* phone-sized column, centred on large screens */
+.wrap {
+  max-width: 480px; min-height: 100vh; min-height: 100dvh; margin: 0 auto;
+  padding: calc(28px + env(safe-area-inset-top, 0px)) 16px calc(28px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--paper); box-shadow: 0 0 60px rgba(50,30,5,.45);
+}
+@media (max-width: 480px) { body { background: var(--paper); } .wrap { box-shadow: none; } }
+
+/* ---- brand ---- */
+.brand-logo { display: block; width: 168px; height: auto; margin: 0 0 14px; }
+
+.welcome { position: relative; width: min(100%, 300px); height: 58px; margin: 0 0 6px; }
+.welcome::before { content: ""; position: absolute; left: 16px; right: 16px; top: 14.5px; height: 29px;
+                   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.welcome .post { position: absolute; top: 3px; width: 21px; height: 52px; background-size: 100% 100%; background-repeat: no-repeat; }
+.welcome .post.l { left: 0; background-image: url("img/post-l.png"); }
+.welcome .post.r { right: 0; background-image: url("img/post-r.png"); }
+.welcome .flo { position: absolute; left: 50%; width: 62px; height: 15px; margin-left: -31px; background-size: 100% 100%; background-repeat: no-repeat; }
+.welcome .flo.t { top: 0; background-image: url("img/flourish-t.png"); }
+.welcome .flo.b { bottom: 0; background-image: url("img/flourish-b.png"); }
+.welcome h1 { position: absolute; left: 26px; right: 26px; top: 14.5px; margin: 0; height: 29px;
+              font: 600 1.7rem/30px var(--serif); text-align: center; color: var(--ink); }
+
+.lead { margin: 10px 8px 0; max-width: 320px; text-align: center; font-size: 1.25rem; color: var(--muted); }
+
+/* ---- the form sits on the torn-paper card ---- */
+.login {
+  position: relative; width: 100%; margin: 14px 0 0; background: none; box-shadow: none; padding: 0;
+  border: 1px solid transparent; border-width: 38px 46px 46px 42px;
+  border-image: url("img/chat-card.png") 163 142 170 114 fill / 59px 51px 61px 41px stretch;
+  animation: rise .5s cubic-bezier(.2,.9,.25,1) both;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .login { animation: none; } }
+
+.login label { display: block; margin: 8px 0 6px; font: 600 1.3rem var(--serif); text-align: left; color: var(--ink); }
+.login input {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 52px; margin: 0; padding: 0 18px; border-radius: 999px;
+  background: linear-gradient(#cfba8f, #c9b284); border: 1px solid rgba(110,90,58,.6); color: var(--ink);
+  font: 500 1.25rem var(--serif); box-shadow: inset 0 3px 6px rgba(80,55,15,.25), 0 8px 12px -6px rgba(80,60,28,.45);
+}
+.login input::placeholder { color: #8d7b58; opacity: 1; }
+.login input:focus, .login input:focus-visible { outline: none; border-color: var(--line); box-shadow: inset 0 3px 6px rgba(80,55,15,.25), 0 0 0 3px rgba(110,90,58,.3); }
+.login .error { min-height: 1.4em; margin: 6px 4px 8px; color: var(--err); font-size: 1.05rem; text-align: left; }
+
+.login button {
+  width: 100%; min-height: 52px; border-radius: 999px; cursor: pointer; touch-action: manipulation;
+  font: 600 1.4rem var(--serif); letter-spacing: .02em;
+}
+button.primary { background: var(--ink); color: var(--cream); border: 0; box-shadow: 0 4px 0 var(--line-soft); }
+button.primary:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--line-soft); }
+button.secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--line); box-shadow: 0 3px 0 rgba(152,125,81,.5); }
+button.secondary:hover { background: rgba(255,244,214,.35); }
+button.secondary:active { transform: translateY(2px); box-shadow: none; }
+
+.login .or { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: var(--muted); font-size: 1.15rem; }
+.login .or::before, .login .or::after { content: ""; flex: 1; border-top: 2px dashed var(--line-soft); }
