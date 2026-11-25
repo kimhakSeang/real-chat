@@ -38,9 +38,19 @@
     const p = n.split(/[-_]/).filter(Boolean);
     return ((p[0] || '?')[0] + ((p[1] || '')[0] || '')).toUpperCase();
   };
+  // Users that have artwork get their engraved portrait tile; everyone else gets initials.
+  // To add one: put the images in component/img/ and add a line (name in lower case).
+  const abs = (p) => new URL(p, location.href).href;
+  const AVATARS = {
+    kimhak: { tile: 'component/img/avatar-kimhak.png', portrait: 'component/img/portrait-kimhak.jpg' },
+  };
   function avatar(name, small) {
-    const a = el('span', 'chat-avatar' + (small ? ' sm' : ''), initials(name));
-    a.style.background = `hsl(${hue(name)} 55% 42%)`;
+    const pic = AVATARS[name.toLowerCase()];
+    const a = el('span', 'chat-avatar' + (small ? ' sm' : '') + (pic ? ' photo' : ''), pic ? '' : initials(name));
+    if (pic) {
+      a.style.setProperty('--tile', `url("${abs(pic.tile)}")`);
+      a.style.setProperty('--portrait', `url("${abs(pic.portrait)}")`);
+    } else a.style.background = `hsl(${hue(name)} 55% 42%)`;
     return a;
   }
 
@@ -132,8 +142,6 @@
   const win = el('section', 'chat-card');
   win.hidden = true;
   win.innerHTML = `
-    <div class="chat-paper" aria-hidden="true"></div>
-    <div class="chat-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="chat-top"><span class="who"></span><span class="titles"><b class="peer"></b><small class="presence"></small></span><button class="chat-link close" aria-label="Close chat">✕</button></div>
     <div class="chat-msgs" role="log" aria-live="polite"></div>
     <form class="chat-row"><input class="msginput" maxlength="1000" autocomplete="off" aria-label="Message"><button class="chat-send" type="submit" aria-label="Send"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></form>`;
