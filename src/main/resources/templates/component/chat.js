@@ -64,18 +64,29 @@
   .chat-avatar .dot{position:absolute;right:0;bottom:0;width:14px;height:14px;border-radius:50%;background:var(--live);border:2px solid var(--bg)}
   .chat-badge{background:#c0392b;color:#fff;border-radius:999px;padding:0 7px;font-size:.75rem;line-height:1.4}
   .chat-avatar .chat-badge{position:absolute;top:-4px;right:-4px}
-
-  .chat-card{position:absolute;left:0;right:0;top:100%;z-index:30;scroll-margin-bottom:110px;display:flex;flex-direction:column;margin:12px 0 0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.12);font-size:.92rem;animation:cardIn .18s ease-out}
+  .chat-card{position:absolute;left:0;right:0;top:100%;z-index:30;scroll-margin-bottom:110px;display:flex;flex-direction:column;margin:12px 0 0;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 38px rgba(0,0,0,.18);font-size:.92rem;transform-origin:var(--caret,40px) 0}
   .chat-card[hidden]{display:none}
   .chat-card::before{content:'';position:absolute;top:-8px;left:var(--caret,40px);width:14px;height:14px;background:var(--surface);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
-  @keyframes cardIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-  @media (prefers-reduced-motion:reduce){.chat-card{animation:none}}
   .chat-card form{background:none;border:0;border-radius:0;padding:10px 12px}
-  .chat-card .chat-top{padding:12px 14px;border-radius:14px 14px 0 0;background:var(--surface)}
+  .chat-card .chat-top{padding:12px 14px;border-radius:16px 16px 0 0;background:var(--surface)}
   .chat-card .chat-top .chat-avatar.sm{width:38px;height:38px;font-size:.85rem}
   .chat-card .chat-msgs{height:min(300px,42vh);flex:none}
-  .chat-card .chat-row{border-radius:0 0 14px 14px}
+  .chat-card .chat-row{border-radius:0 0 16px 16px}
   .chat-card .chat-row input{border-radius:999px;padding:10px 16px}
+
+  /* Opening: the card grows out of the friend you tapped (the arrow tip is the origin), bubbles float in */
+  .chat-card.is-opening{animation:chatOpen .5s cubic-bezier(.2,.9,.25,1.15) both}
+  .chat-card.is-opening .chat-line,.chat-card.is-opening .chat-hello{animation:bubbleIn .35s .1s ease-out both}
+  .chat-card.is-closing{animation:chatClose .22s ease-in both}
+  @keyframes chatOpen{0%{opacity:0;transform:translateY(-14px) scale(.55)}60%{opacity:1}100%{opacity:1;transform:none}}
+  @keyframes chatClose{to{opacity:0;transform:translateY(-10px) scale(.6)}}
+  @keyframes bubbleIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .chat-person .chat-avatar.bounce{animation:avatarPop .4s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes avatarPop{0%{transform:scale(1)}40%{transform:scale(.82)}100%{transform:scale(1)}}
+  @media (prefers-reduced-motion:reduce){
+    .chat-card.is-opening,.chat-card.is-closing,.chat-card.is-opening .chat-line,.chat-card.is-opening .chat-hello,.chat-person .chat-avatar.bounce{animation:none}
+  }
+
   .chat-send{flex:none;width:42px;height:42px;padding:0;border:0;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;cursor:pointer}
   .chat-send:disabled{opacity:.4;cursor:not-allowed}
   .chat-send .ico{width:20px;height:20px}
@@ -111,7 +122,7 @@
   const strip = el('section', 'chat-strip');
   strip.setAttribute('aria-label', 'Active users');
   strip.innerHTML = `
-    <div class="chat-strip-head"><b>Online users</b><span class="count"></span></div>
+    <div class="chat-strip-head"><b>Online Users</b><span class="count"></span></div>
     <div class="chat-people"></div>`;
   const slot = document.getElementById('people-slot');            // user.html provides the place for it
   if (slot) slot.append(strip);
@@ -121,6 +132,8 @@
   const win = el('section', 'chat-card');
   win.hidden = true;
   win.innerHTML = `
+    <div class="chat-paper" aria-hidden="true"></div>
+    <div class="chat-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="chat-top"><span class="who"></span><span class="titles"><b class="peer"></b><small class="presence"></small></span><button class="chat-link close" aria-label="Close chat">✕</button></div>
     <div class="chat-msgs" role="log" aria-live="polite"></div>
     <form class="chat-row"><input class="msginput" maxlength="1000" autocomplete="off" aria-label="Message"><button class="chat-send" type="submit" aria-label="Send"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button></form>`;
@@ -128,6 +141,8 @@
 
   const q = (root, s) => root.querySelector(s);
   const peopleEl = q(strip, '.chat-people'), countEl = q(strip, '.count');
+  const emptyEl = el('p', 'chat-empty'); emptyEl.hidden = true; peopleEl.after(emptyEl);   // note under the avatar row
+  const MIN_SLOTS = 6;                                           // empty frames keep the row looking like the vintage design
   const searchEl = document.getElementById('friend-search') || { value: '', addEventListener() {} };   // search box in the page
   const whoEl = q(win, '.who'), sendBtn = q(win, '.chat-send'), peerEl = q(win, '.peer'), presenceEl = q(win, '.presence'), msgsEl = q(win, '.chat-msgs'), input = q(win, '.msginput');
   const nameEl = document.getElementById('user-name');            // header shows the logo + my user name
@@ -175,12 +190,8 @@
     renderChats();
     const shown = others.filter((n) => n.toLowerCase().includes(term.toLowerCase()));
     log(`Chat: friend list → online=${JSON.stringify(online)}, others=${others.length}, shown=${shown.length}${term ? `, search="${term}"` : ''}`);
-    if (!shown.length) {
-      peopleEl.append(el('div', 'chat-empty', !others.length
-        ? 'No one else is online.'
-        : `No friends match “${term}”.`));
-      return;
-    }
+    emptyEl.hidden = !!shown.length;
+    emptyEl.textContent = shown.length ? '' : (!others.length ? 'No one else is online.' : `No friends match “${term}”.`);
     shown.forEach((n) => {
       const b = el('button', 'chat-person' + (n === current ? ' active' : ''));
       b.title = n;
@@ -189,15 +200,28 @@
       a.append(el('span', 'dot'));
       if (unread[n]) a.append(el('span', 'chat-badge', unread[n]));
       b.append(a, el('span', 'nm', n));
-      b.onclick = () => openThread(n);
+      b.onclick = () => {
+        openThread(n);
+        const av = peopleEl.querySelector('.chat-person.active .chat-avatar');   // little bounce on the friend you tapped
+        if (av && !reduceMotion()) av.classList.add('bounce');
+      };
       peopleEl.append(b);
     });
+    for (let i = shown.length; i < MIN_SLOTS; i++) {              // empty frames, like the design
+      const g = el('div', 'chat-person ghost');
+      g.setAttribute('aria-hidden', 'true');
+      g.append(el('span', 'chat-avatar'));
+      peopleEl.append(g);
+    }
   }
 
   function renderThread() {
     renderChats();
-    if (!current) { win.hidden = true; return; }
+    if (!current) { closeCard(); return; }
+    const wasHidden = win.hidden || win.classList.contains('is-closing');
     win.hidden = false;
+    if (wasHidden || shownFor !== current) { positionCaret(); playOpen(); }   // opened, or switched to another friend
+    shownFor = current;
     peerEl.textContent = current;
     whoEl.replaceChildren(avatar(current, true));
     msgsEl.replaceChildren();
@@ -244,6 +268,26 @@
     updateSend();
     positionCaret();
   }
+
+  /* ---------- Open / close animation of the chat card ---------- */
+  let shownFor = null, closeTimer = null;
+  function reduceMotion() { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  function playOpen() {
+    clearTimeout(closeTimer);
+    win.classList.remove('is-closing', 'is-opening');
+    if (reduceMotion()) return;
+    void win.offsetWidth;                            // restart the animation
+    win.classList.add('is-opening');
+  }
+  function closeCard() {
+    shownFor = null;
+    if (win.hidden || win.classList.contains('is-closing')) return;
+    if (reduceMotion()) { win.hidden = true; return; }
+    win.classList.remove('is-opening');
+    win.classList.add('is-closing');
+    closeTimer = setTimeout(() => { win.hidden = true; win.classList.remove('is-closing'); }, 230);
+  }
+  win.addEventListener('animationend', (e) => { if (e.target === win) win.classList.remove('is-opening'); });
 
   function updateSend() { sendBtn.disabled = input.disabled || !input.value.trim(); }
   function positionCaret() {                        // the small arrow on the card points at the selected friend

@@ -196,21 +196,34 @@ function ensureDetail() {
   dlg.className = 'detail';
   dlg.setAttribute('aria-labelledby', 'detail-title');
   dlg.innerHTML = `
-    <div class="detail-box">
-      <button type="button" class="detail-close" aria-label="Close">✕</button>
-      <div class="detail-head">
-        <img class="detail-img" alt="" hidden>
-        <div class="detail-titles"><h2 id="detail-title"></h2><p class="sub"></p><div class="meta"></div></div>
+    <div class="detail-book">
+      <div class="detail-box">
+        <button type="button" class="detail-close" aria-label="Close">✕</button>
+        <div class="detail-head">
+          <img class="detail-img" alt="" hidden>
+          <div class="detail-titles"><h2 id="detail-title"></h2><p class="sub"></p><div class="meta"></div></div>
+        </div>
+        <hr>
+        <div class="detail-content"></div>
       </div>
-      <hr>
-      <div class="detail-content"></div>
+      <div class="detail-cover" aria-hidden="true">
+        <img alt="" hidden>
+        <div class="cover-text">
+          <div class="cover-mast"><span>Event Board</span><span class="cover-date"></span></div>
+          <div><div class="cover-title"></div><div class="cover-sub"></div></div>
+        </div>
+      </div>
     </div>`;
   document.body.append(dlg);
   const q = (s) => dlg.querySelector(s);
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });   // click on the dark backdrop
   q('.detail-close').addEventListener('click', () => dlg.close());
   q('.detail-img').addEventListener('error', (e) => { e.target.hidden = true; });
-  detail = { dlg, img: q('.detail-img'), title: q('h2'), sub: q('.sub'), meta: q('.meta'), content: q('.detail-content') };
+  const book = q('.detail-book'), cover = q('.detail-cover');
+  cover.addEventListener('animationend', () => book.classList.remove('opening'));   // cover has swung open
+  q('.detail-cover img').addEventListener('error', (e) => { e.target.hidden = true; });
+  detail = { dlg, book, img: q('.detail-img'), title: q('h2'), sub: q('.sub'), meta: q('.meta'), content: q('.detail-content'),
+             coverImg: q('.detail-cover img'), coverTitle: q('.cover-title'), coverSub: q('.cover-sub'), coverDate: q('.cover-date') };
   return detail;
 }
 
@@ -225,6 +238,15 @@ function openDetail(msg) {
   d.meta.textContent = `${msg.author || 'Unknown'} · ${parseTimestamp(msg.timestamp).toLocaleString()}`;
   d.content.textContent = msg.content || '';
   d.dlg.scrollTop = 0;
+  d.content.classList.toggle('cols', String(msg.content || '').length > 600);   // long text flows in two columns
+  // Magazine effect: a cover (image + headline) swings open like a magazine to reveal the page
+  d.coverTitle.textContent = msg.tittle || '(no title)';
+  d.coverSub.textContent = msg.subTitle || '';
+  d.coverDate.textContent = parseTimestamp(msg.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  d.coverImg.hidden = !src;
+  if (src) d.coverImg.src = src; else d.coverImg.removeAttribute('src');
+  d.book.classList.remove('opening');
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) { void d.book.offsetWidth; d.book.classList.add('opening'); }
   if (!d.dlg.open) d.dlg.showModal();
   log(`Detail opened: "${msg.tittle}" (image=${src || 'none'}, content ${String(msg.content || '').length} chars)`);
 }
