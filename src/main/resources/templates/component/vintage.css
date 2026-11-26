@@ -241,3 +241,15 @@ body[data-page="user"] .detail-cover { background: linear-gradient(135deg, #7a5a
 body[data-page="user"] .detail-close { color: var(--ink); min-width: 44px; min-height: 44px; }
 body[data-page="user"] .theme input { accent-color: var(--ink); width: 20px; height: 20px; }
 body[data-page="user"] .theme label { min-height: 40px; font-size: 1.15rem; }
+
+/* ---------- Guest home screen (guest.html) ---------- */
+body[data-page="user"].guest .bottom-nav { width: min(320px, calc(100vw - 20px)); }
+body[data-page="user"] .guest-note {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 12px 14px;
+  background: var(--paper-2); border: 3px double var(--line); border-radius: 4px; box-shadow: 5px 6px 0 rgba(110,90,50,.3);
+}
+body[data-page="user"] .guest-note p { margin: 0; font-size: 1.15rem; line-height: 1.15; color: var(--ink); }
+body[data-page="user"] .guest-note button.primary { flex: none; padding: 0 20px; }
+body[data-page="user"].guest .chat-strip { margin-top: 18px; }
+body[data-page="user"].guest .chat-strip-head { margin-bottom: 0; }
+body[data-page="user"].guest .news-search { margin-top: 14px; }

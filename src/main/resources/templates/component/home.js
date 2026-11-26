@@ -36,7 +36,7 @@
   const views = { home: $('view-home'), chats: $('view-chats'), todo: $('view-todo') };
   const navBtns = document.querySelectorAll('.bottom-nav [data-view]');
   function setView(name) {
-    Object.keys(views).forEach((k) => { views[k].hidden = k !== name; });
+    Object.keys(views).forEach((k) => { if (views[k]) views[k].hidden = k !== name; });   // guest page has no Chats view
     navBtns.forEach((b) => b.setAttribute('aria-current', b.dataset.view === name ? 'page' : 'false'));
     closePops();
     window.scrollTo(0, 0);

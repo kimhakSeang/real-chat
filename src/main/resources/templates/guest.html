@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#d2bd8f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Guest · Home</title>
+  <link rel="icon" type="image/png" href="component/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Yanone+Kaffeesatz:wght@400;500;600;700&family=Fira+Sans:wght@400&family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="component/style.css">
+  <link rel="stylesheet" href="component/vintage.css">
+</head>
+<body data-page="user" class="guest">
+<div class="wrap">
+
+  <!-- Top bar: logo plaque | "Hi, Guest" banner | announcements, settings -->
+  <header class="topbar">
+    <img class="brand-logo" src="component/img/logo-vintage.png" alt="Vintage" width="80" height="43">
+
+    <div class="hi-banner">
+      <span class="post l" aria-hidden="true"></span><span class="post r" aria-hidden="true"></span>
+      <span class="flo t" aria-hidden="true"></span><span class="flo b" aria-hidden="true"></span>
+      <div class="hi-line">Hi, <span id="user-name">Guest</span></div>
+    </div>
+
+    <div class="actions">
+      <div class="pop-wrap">
+        <button id="bell" class="icon-btn" type="button" aria-label="Notifications" aria-expanded="false">
+          <span class="badge" hidden></span>
+        </button>
+        <div id="bell-pop" class="pop" hidden>
+          <div class="pop-head"><b>Notifications</b><button id="bell-readall" class="chat-link" type="button">Mark all read</button></div>
+          <div id="bell-list"></div>
+        </div>
+      </div>
+      <div class="pop-wrap">
+        <!-- gear artwork is drawn by CSS -->
+        <button id="avatar-btn" class="avatar-btn" type="button" aria-label="Account menu" aria-expanded="false"></button>
+        <div id="account-pop" class="pop" hidden>
+          <button id="open-settings" class="pop-item" type="button"><b>Settings</b></button>
+          <button id="guest-signin-menu" class="pop-item" type="button"><b>Sign in</b></button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <!-- connection status: kept in the DOM (board.js updates it) but visually hidden to match the design -->
+  <span id="status" class="sr-only" role="status"><i></i><span>Connecting…</span></span>
+
+  <!-- Home (guest): no online users, no chat -->
+  <section id="view-home">
+    <div class="guest-note">
+      <p>You are browsing as a guest. Sign in to chat with friends.</p>
+      <button id="guest-signin" class="primary" type="button">Sign in</button>
+    </div>
+    <div class="chat-strip"><div class="chat-strip-head"><b>Latest News</b></div></div>
+
+    <div id="news-block">
+      <div class="search news-search">
+        <input id="news-search" type="search" placeholder="Search news…" autocomplete="off" aria-label="Search news">
+        <div class="chips">
+          <button class="chip" type="button" data-tab="all" aria-pressed="true">All</button>
+          <button class="chip" type="button" data-tab="saved" aria-pressed="false">Saved</button>
+        </div>
+      </div>
+      <main id="feed"><p class="empty" id="empty">No events yet. New events appear here as soon as they are published.</p></main>
+      <div id="saved-feed" hidden></div>
+      <p class="empty" id="news-empty" hidden></p>
+    </div>
+  </section>
+
+  <!-- To-do list -->
+  <section id="view-todo" hidden>
+    <h2 class="section">To-do list</h2>
+    <form id="todo-form" class="todo-form">
+      <input id="todo-input" maxlength="120" placeholder="Add a task…" autocomplete="off" aria-label="New task">
+      <button class="primary" type="submit">Add</button>
+    </form>
+    <ul id="todo-list" class="todo-list"></ul>
+    <div class="todo-foot"><span id="todo-count"></span><button id="todo-clear" class="chat-link" type="button" hidden>Clear completed</button></div>
+  </section>
+</div>
+
+<!-- Bottom bar -->
+<nav class="bottom-nav" aria-label="Main">
+  <button type="button" data-view="home" aria-current="page" aria-label="Back to home screen">
+    <img class="nav-ico" src="component/img/nav-home.png" alt="" width="44" height="36">
+    <small>Home</small>
+  </button>
+  <button type="button" data-view="todo" aria-label="To-do list">
+    <img class="nav-ico" src="component/img/nav-todo.png" alt="" width="37" height="30">
+    <small>To-do</small>
+  </button>
+</nav>
+
+<!-- Settings -->
+<dialog id="settings" class="detail">
+  <div class="detail-box">
+    <button type="button" class="detail-close" id="settings-close" aria-label="Close">✕</button>
+    <h2 style="margin:0 0 4px;font:600 1.9rem var(--display)">Settings</h2>
+    <p class="sub" style="margin:0;color:var(--muted)">Browsing as <b id="settings-name"></b></p>
+    <fieldset class="theme">
+      <legend>Theme</legend>
+      <label><input type="radio" name="theme" value="system"> Same as device</label>
+      <label><input type="radio" name="theme" value="light"> Light</label>
+      <label><input type="radio" name="theme" value="dark"> Dark</label>
+    </fieldset>
+  </div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="./component/board.js"></script>
+<script src="./component/home.js"></script>
+<script>
+  // Guests have no chat identity: send them to the login page to sign in.
+  ['guest-signin', 'guest-signin-menu'].forEach((id) => {
+    document.getElementById(id).addEventListener('click', () => { location.href = 'login.html'; });
+  });
+</script>
+</body>
+</html>
