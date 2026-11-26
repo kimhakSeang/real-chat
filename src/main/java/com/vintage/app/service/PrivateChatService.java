@@ -1,6 +1,6 @@
-package com.kimhak.niche.app.service;
+package com.vintage.app.service;
 
-import com.kimhak.niche.app.dto.PersonalMessage;
+import com.vintage.app.dto.PersonalMessage;
 
 import java.security.Principal;
 

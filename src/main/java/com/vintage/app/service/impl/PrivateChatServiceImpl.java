@@ -1,7 +1,7 @@
-package com.kimhak.niche.app.service.impl;
+package com.vintage.app.service.impl;
 
-import com.kimhak.niche.app.dto.PersonalMessage;
-import com.kimhak.niche.app.service.PrivateChatService;
+import com.vintage.app.dto.PersonalMessage;
+import com.vintage.app.service.PrivateChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

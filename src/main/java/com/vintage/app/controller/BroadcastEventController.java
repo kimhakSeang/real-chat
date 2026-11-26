@@ -1,6 +1,6 @@
-package com.kimhak.niche.app.controller;
+package com.vintage.app.controller;
 
-import com.kimhak.niche.app.dto.EventMessage;
+import com.vintage.app.dto.EventMessage;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;

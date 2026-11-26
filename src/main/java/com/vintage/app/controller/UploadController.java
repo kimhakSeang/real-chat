@@ -1,7 +1,6 @@
-package com.kimhak.niche.app.controller;
+package com.vintage.app.controller;
 
-import com.kimhak.niche.app.service.UploadImageService;
-import lombok.AllArgsConstructor;
+import com.vintage.app.service.UploadImageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

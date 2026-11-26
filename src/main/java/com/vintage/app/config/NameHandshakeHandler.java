@@ -1,4 +1,4 @@
-package com.kimhak.niche.app.handler;
+package com.vintage.app.config;
 
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.web.socket.WebSocketHandler;

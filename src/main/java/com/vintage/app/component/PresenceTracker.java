@@ -1,4 +1,4 @@
-package com.kimhak.niche.app.component;
+package com.vintage.app.component;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;

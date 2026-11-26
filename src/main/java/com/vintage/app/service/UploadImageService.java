@@ -1,4 +1,4 @@
-package com.kimhak.niche.app.service;
+package com.vintage.app.service;
 
 import org.springframework.web.multipart.MultipartFile;
 

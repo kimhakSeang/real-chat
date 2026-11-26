@@ -1,4 +1,4 @@
-package com.kimhak.niche.app;
+package com.vintage.app;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

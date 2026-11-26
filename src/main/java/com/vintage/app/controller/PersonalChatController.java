@@ -1,8 +1,8 @@
-package com.kimhak.niche.app.controller;
+package com.vintage.app.controller;
 
-import com.kimhak.niche.app.component.PresenceTracker;
-import com.kimhak.niche.app.dto.PersonalMessage;
-import com.kimhak.niche.app.service.PrivateChatService;
+import com.vintage.app.component.PresenceTracker;
+import com.vintage.app.dto.PersonalMessage;
+import com.vintage.app.service.PrivateChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;

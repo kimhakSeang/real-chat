@@ -1,4 +1,4 @@
-package com.kimhak.niche.app.dto;
+package com.vintage.app.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

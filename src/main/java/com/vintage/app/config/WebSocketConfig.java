@@ -1,4 +1,4 @@
-package com.kimhak.niche.app.config;
+package com.vintage.app.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
